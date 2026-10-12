@@ -1,0 +1,9 @@
+opensearch_service_name: opensearch
+opensearch_dashboards_service_name: opensearch-dashboards
+
+opensearch_config_path: /etc/opensearch
+opensearch_dashboards_config_path: /etc/opensearch-dashboards
+
+opensearch_repository_key_url: "https://artifacts.opensearch.org/publickeys/opensearch-release.pgp"
+opensearch_repository_url: "https://artifacts.opensearch.org/releases/bundle/opensearch/3.x/apt"
+opensearch_dashboards_repository_url: "https://artifacts.opensearch.org/releases/bundle/opensearch-dashboards/3.x/apt"

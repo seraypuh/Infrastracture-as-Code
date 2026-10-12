@@ -1,0 +1,133 @@
+---
+- name: Install required packages
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+      - apt-transport-https
+    state: present
+    update_cache: true
+
+- name: Create APT keyrings directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Download OpenSearch signing key
+  ansible.builtin.get_url:
+    url: "{{ opensearch_repository_key_url }}"
+    dest: /tmp/opensearch-release.pgp
+    mode: "0644"
+
+- name: Convert OpenSearch signing key to keyring format
+  ansible.builtin.command:
+    cmd: >-
+      gpg --dearmor --batch --yes
+      --output /etc/apt/keyrings/opensearch-release-keyring
+      /tmp/opensearch-release.pgp
+    creates: /etc/apt/keyrings/opensearch-release-keyring
+
+- name: Add OpenSearch APT repository
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [signed-by=/etc/apt/keyrings/opensearch-release-keyring]
+      {{ opensearch_repository_url }} stable main
+    filename: opensearch-3.x
+    state: present
+    update_cache: false
+
+- name: Add OpenSearch Dashboards APT repository
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [signed-by=/etc/apt/keyrings/opensearch-release-keyring]
+      {{ opensearch_dashboards_repository_url }} stable main
+    filename: opensearch-dashboards-3.x
+    state: present
+    update_cache: false
+
+- name: Update APT package cache
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: Configure vm.max_map_count
+  ansible.posix.sysctl:
+    name: vm.max_map_count
+    value: "{{ opensearch_max_map_count }}"
+    state: present
+    reload: true
+
+- name: Install OpenSearch
+  ansible.builtin.apt:
+    name: "opensearch={{ opensearch_version }}"
+    state: present
+  environment:
+    DISABLE_INSTALL_DEMO_CONFIG: "true"
+    DISABLE_SECURITY_PLUGIN: "true"
+
+- name: Install OpenSearch Dashboards
+  ansible.builtin.apt:
+    name: "opensearch-dashboards={{ opensearch_dashboards_version }}"
+    state: present
+
+- name: Configure OpenSearch
+  ansible.builtin.template:
+    src: opensearch.yml.j2
+    dest: "{{ opensearch_config_path }}/opensearch.yml"
+    owner: root
+    group: opensearch
+    mode: "0660"
+  notify: Restart OpenSearch
+
+- name: Create JVM options directory
+  ansible.builtin.file:
+    path: "{{ opensearch_config_path }}/jvm.options.d"
+    state: directory
+    owner: root
+    group: opensearch
+    mode: "0755"
+
+- name: Configure OpenSearch JVM heap
+  ansible.builtin.template:
+    src: jvm.options.j2
+    dest: "{{ opensearch_config_path }}/jvm.options.d/heap.options"
+    owner: root
+    group: opensearch
+    mode: "0644"
+  notify: Restart OpenSearch
+
+- name: Configure OpenSearch Dashboards
+  ansible.builtin.template:
+    src: opensearch_dashboards.yml.j2
+    dest: "{{ opensearch_dashboards_config_path }}/opensearch_dashboards.yml"
+    owner: root
+    group: opensearch-dashboards
+    mode: "0660"
+  notify: Restart OpenSearch Dashboards
+
+- name: Enable and start OpenSearch
+  ansible.builtin.systemd:
+    name: "{{ opensearch_service_name }}"
+    enabled: true
+    state: started
+
+- name: Apply pending OpenSearch configuration changes
+  ansible.builtin.meta: flush_handlers
+
+- name: Wait for OpenSearch API
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ opensearch_http_port }}/"
+    method: GET
+    return_content: true
+    status_code: 200
+  register: opensearch_api
+  retries: "{{ opensearch_api_retries }}"
+  delay: "{{ opensearch_api_delay }}"
+  until: opensearch_api.status == 200
+
+- name: Enable and start OpenSearch Dashboards
+  ansible.builtin.systemd:
+    name: "{{ opensearch_dashboards_service_name }}"
+    enabled: true
+    state: started

@@ -1,0 +1,5 @@
+server.host: {{ opensearch_dashboards_server_host }}
+server.port: {{ opensearch_dashboards_server_port }}
+
+opensearch.hosts:
+  - "http://{{ opensearch_network_host }}:{{ opensearch_http_port }}"

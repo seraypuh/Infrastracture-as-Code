@@ -1,0 +1,9 @@
+- name: Restart OpenSearch
+  ansible.builtin.systemd:
+    name: "{{ opensearch_service_name }}"
+    state: restarted
+
+- name: Restart OpenSearch Dashboards
+  ansible.builtin.systemd:
+    name: "{{ opensearch_dashboards_service_name }}"
+    state: restarted

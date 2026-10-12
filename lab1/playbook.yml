@@ -1,0 +1,6 @@
+- name: Install and configure OpenSearch
+  hosts: opensearch
+  become: true
+
+  roles:
+    - opensearch
