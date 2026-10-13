@@ -428,6 +428,8 @@ seraypuh@seraypuh:~/Рабочий стол/labs-iac/lab1$
 
 Если что, некоторые задачи были уже в статусе `ok`, потому что в ходе выполнения я запускал в том числе и неудачные плейбуки, которые выполняли первые задачи, а затем заканчивали ошибкой.
 
+**UPD!** Перезапуск Opensearch происходит только один раз! На моменте `ansible.builtin.meta: flush_handlers`. В Ansible каждый notify добавляется в ожидание либо конца play, либо flush handlers. Двойного перезапуска не будет, потому что одинаковые хендлеры объединяются.
+
 Теперь проверяем что всё поднялось: запускаем ssh-туннель и заходим на страницу дашбордов:
 ```bash
 ssh -L 5601:127.0.0.1:5601 root@<144.124.251.140>
@@ -504,6 +506,33 @@ PLAY RECAP *********************************************************************
 ```
 
 Единственный changed -- это `apt update`, так что всё нормально.
+
+**UPD!** Результат `GET _cluster/health`:
+
+```bash
+root@v1090542:~# curl http://127.0.0.1:9200/_cluster/health?pretty
+{
+  "cluster_name" : "ansible-cluster",
+  "status" : "green",
+  "timed_out" : false,
+  "number_of_nodes" : 1,
+  "number_of_data_nodes" : 1,
+  "discovered_master" : true,
+  "discovered_cluster_manager" : true,
+  "active_primary_shards" : 3,
+  "active_shards" : 3,
+  "relocating_shards" : 0,
+  "initializing_shards" : 0,
+  "unassigned_shards" : 0,
+  "delayed_unassigned_shards" : 0,
+  "number_of_pending_tasks" : 0,
+  "number_of_in_flight_fetch" : 0,
+  "task_max_waiting_in_queue_millis" : 0,
+  "active_shards_percent_as_number" : 100.0
+}
+root@v1090542:~# 
+```
+_чтобы добавить этот запрос в отчёт пришлось заново оплатить хостинг🫠 Ну, хотя бы удалось проверить, что эта роль заработает и на полностью чистом сервере, потому что до этого из-за неудачных попыток запуска ролей на сервере уже что-то было..._
 
 # Заключение
 
